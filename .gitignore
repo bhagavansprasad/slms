@@ -1,0 +1,89 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Model checkpoints and training artifacts
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+
+# Large binary data files (tokenized datasets)
+*.bin
+train.bin
+validation.bin
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# PyCharm
+.idea/
+*.iml
+
+# VS Code
+.vscode/
+
+# Vim
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Output files
+outputs/*.png
+outputs/*.txt
+outputs/*.json
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Large datasets (if you download TinyStories locally)
+data/*.bin
+data/TinyStories/
+
+# Keep empty directories
+!.gitkeep
+
+# Allow specific model checkpoints if you want to commit them
+# !models/pretrained_model.pt
