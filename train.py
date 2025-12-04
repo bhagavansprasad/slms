@@ -245,7 +245,8 @@ def train_slm(config, train_data, val_data, tokenizer):
     # Optimizer and scheduler
     optimizer = torch.optim.AdamW(model.parameters(), lr=config.learning_rate, 
                                   betas=(0.9, 0.95), weight_decay=0.1, eps=1e-9)
-    scaler = torch.cuda.amp.GradScaler(enabled=(dtype == 'float16'))
+    # scaler = torch.cuda.amp.GradScaler(enabled=(dtype == 'float16'))
+    scaler = torch.amp.GradScaler(device, enabled=(dtype == 'float16'))
     
     # Training loop
     train_losses, val_losses = [], []
@@ -300,7 +301,8 @@ def train_slm(config, train_data, val_data, tokenizer):
     plt.title(f'Training Curves (Data: {config.dataset_size} tokens, Params: {model.param_count:,})')
     plt.legend()
     plt.grid(True, alpha=0.3)
-    plt.show()
+    plt.savefig('training_curves.png', dpi=150, bbox_inches='tight')
+    print(f"📊 Training curve saved to: training_curves.png")
     
     return model, tokenizer
 
