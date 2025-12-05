@@ -85,5 +85,5 @@ data/TinyStories/
 # Keep empty directories
 !.gitkeep
 
-# Allow specific model checkpoints if you want to commit them
-# !models/pretrained_model.pt
+models/
+*.pt

@@ -34,6 +34,7 @@ def create_tiny_dataset_from_text(text, config):
     
     # Tokenize
     tokens = enc.encode_ordinary(text)
+    orig_tokens_len = len(tokens)
     
     # Limit to dataset_size
     tokens = tokens[:config.dataset_size]
@@ -44,9 +45,11 @@ def create_tiny_dataset_from_text(text, config):
     val_tokens = np.array(tokens[split_idx:], dtype=np.uint16)
     
     print(f"📊 Dataset Stats:")
-    print(f"   Total tokens: {len(tokens)}")
-    print(f"   Train tokens: {len(train_tokens)}")
-    print(f"   Val tokens: {len(val_tokens)}")
+    print(f"   Text length  : {len(text)}")
+    print(f"   Actual tokens: {orig_tokens_len}")
+    print(f"   Total tokens : {len(tokens)}")
+    print(f"   Train tokens : {len(train_tokens)}")
+    print(f"   Val tokens   : {len(val_tokens)}")
     print(f"   Unique tokens: {len(set(tokens))}")
     
     return train_tokens, val_tokens, enc
