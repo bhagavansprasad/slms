@@ -1450,7 +1450,6 @@ Validation Loss: 7.14 (HIGH)
 ```
 
 **Your Actual Data Shows This:**
-
 ```
 100-token model:
 Training Loss:   ~3.0
@@ -4561,6 +4560,7 @@ Achievable: Research frontier
   - [x] 2.2 Underfitting (1/1) ✅
   - [x] 2.3 Train vs Validation Loss Gap (5/5) ✅
 ---
+```
 
 ## **GROUP 3: Training Dynamics & Curves**
 *Build after Groups 1 & 2 - requires understanding of both loss and overfitting*
@@ -4575,7 +4575,6 @@ When validation loss starts increasing while training loss continues decreasing,
 
 **The Training Journey:**
 
-```
 PHASE 1: Early Training (Steps 0-500)
 ──────────────────────────────────────
 Both losses decreasing together
