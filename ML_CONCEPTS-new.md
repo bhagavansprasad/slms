@@ -1575,16 +1575,6 @@ Validation loss shows if you truly understand
 
 ---
 
-**End of GROUP 1: Core Loss Concepts**
-
-**Status: COMPLETE ✅**
-- Total questions: 11/11
-- Subsections: 1.1 (6 questions), 1.2 (5 questions)
-- All explanations use pen & paper methods
-- All tied to your experimental results
-
----
-
 ## **GROUP 2: Overfitting & Generalization**
 *Build after Group 1 - compares training vs validation behavior*
 
@@ -3668,6 +3658,17 @@ Achievable: Research frontier
 │ It's REAL and ACHIEVABLE! ✅              │
 └────────────────────────────────────────────┘
 ```
+---
+
+**Summary of GROUP 2: Overfitting & Generalization:**
+
+✅ **Overfitting = Memorization** (fails on new data)  
+✅ **Insufficient Data = Overfitting Cause** (5× data = 46× less overfitting)  
+✅ **Underfitting = Didn't Learn Enough** (both losses high)  
+✅ **Gap = Overfitting Indicator** (large gap = memorization)  
+✅ **Ideal Gap: 0.0-0.3** (your 1000 & 3000 models achieved this!)  
+✅ **Zero Gap is Real** (your 3000-token model proved it: 1.95/1.95)  
+✅ **Pen & Paper Demonstrations** (student analogies, bar charts, tables)  
 
 ---
 
