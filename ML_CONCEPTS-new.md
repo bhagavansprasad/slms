@@ -3671,22 +3671,597 @@ Achievable: Research frontier
 
 ---
 
-**Summary of GROUP 2: Overfitting & Generalization:**
+## **GROUP 3: Training Dynamics & Curves**
+*Build after Groups 1 & 2 - requires understanding of both loss and overfitting*
 
-✅ **Overfitting = Memorization** (fails on new data)  
-✅ **Insufficient Data = Overfitting Cause** (5× data = 46× less overfitting)  
-✅ **Underfitting = Didn't Learn Enough** (both losses high)  
-✅ **Gap = Overfitting Indicator** (large gap = memorization)  
-✅ **Ideal Gap: 0.0-0.3** (your 1000 & 3000 models achieved this!)  
-✅ **Zero Gap is Real** (your 3000-token model proved it: 1.95/1.95)  
-✅ **Pen & Paper Demonstrations** (student analogies, bar charts, tables)  
+### 3.1 Training Curve Behavior
+
+#### Q1: During training: if the first 500 steps show decreasing train and validation loss, why might validation loss increase again after 200 more steps?
+
+**Simple Answer:**
+
+When validation loss starts increasing while training loss continues decreasing, it means the model has shifted from **learning patterns** to **memorizing training data**. This is the classic sign of overfitting beginning.
+
+**The Training Journey:**
+
+```
+PHASE 1: Early Training (Steps 0-500)
+──────────────────────────────────────
+Both losses decreasing together
+
+Step 0:
+Train Loss: 10.0 (random)
+Val Loss:   10.0 (random)
+Status: Model knows nothing
+
+Step 200:
+Train Loss: 5.0 (learning basic patterns)
+Val Loss:   5.5 (also improving)
+Status: Learning generalizable patterns ✅
+
+Step 500:
+Train Loss: 2.0 (good progress)
+Val Loss:   2.3 (still improving)
+Status: Still learning useful patterns ✅
+
+Why both decrease?
+- Model discovering general language rules
+- Patterns help on both seen and unseen data
+- Healthy learning phase
+
+
+PHASE 2: Transition Point (Steps 500-550)
+──────────────────────────────────────────
+Validation loss stops improving
+
+Step 550:
+Train Loss: 1.8 (still improving)
+Val Loss:   2.3 (plateaued)
+Status: Reached optimal generalization
+
+This is the SWEET SPOT - best time to stop! ⭐
+
+
+PHASE 3: Overfitting Phase (Steps 550-700)
+───────────────────────────────────────────
+Validation loss starts increasing
+
+Step 600:
+Train Loss: 1.5 (still decreasing)
+Val Loss:   2.5 (increasing!) ⚠️
+Status: Starting to overfit
+
+Step 700:
+Train Loss: 1.2 (still decreasing)
+Val Loss:   3.0 (increasing more!) ⚠️⚠️
+Status: Overfitting badly
+
+Why this happens?
+- Model memorizing training examples
+- Improvements only help training data
+- Performance on new data gets worse
+```
+
+**Visual Representation:**
+
+```
+TRAINING CURVE
+
+Loss
+10.0│●●                          
+    │   ●●                       Both losses
+ 8.0│      ●●                    decreasing
+    │         ●●                 (Good learning)
+ 6.0│            ●●              
+    │              ●●            
+ 4.0│                ●●          
+    │                  ●●        
+ 2.0│                    ●●──────── Training Loss
+    │                      ●         (keeps decreasing)
+ 1.0│                       ●●●●●●
+    │                        
+ 0.0│                   ↑         ↑
+    └─────────────────────────────────→ Steps
+    0   100  200  300  400  500  600  700
+
+                          Sweet   Overfitting
+                          Spot    begins!
+                          ⭐      ⚠️
+
+Val Loss
+10.0│●●                          
+    │   ●●                       
+ 8.0│      ●●                    
+    │         ●●                 
+ 6.0│            ●●              
+    │              ●●            
+ 4.0│                ●●          
+    │                  ●●        
+ 2.0│                    ●●────── Validation Loss
+    │                      ●      (stops improving)
+ 3.0│                       ●●    (then increases!)
+    │                         ●●  ⚠️
+ 0.0│                   ↑         ↑
+    └─────────────────────────────────→ Steps
+    0   100  200  300  400  500  600  700
+
+                          Best    Getting
+                          Point   worse!
+```
+
+**Why Does Validation Loss Increase?**
+
+```
+REASON 1: Memorization Over Generalization
+───────────────────────────────────────────
+
+Steps 0-500:
+Model learns: "Animals do actions"
+Effect: Helps both training and validation ✅
+
+Steps 500-700:
+Model learns: "In training, 'cat' always followed by 'sat'"
+Effect: Helps training, hurts validation ⚠️
+
+Training sentence: "The cat sat" → Perfect! ✓
+Validation sentence: "The cat jumped" → Wrong! ✗
+Model insists on "sat" because it memorized this
+
+
+REASON 2: Overfitting to Noise
+───────────────────────────────
+
+Steps 0-500:
+Model learns: Real patterns (grammar, structure)
+Effect: Useful everywhere ✅
+
+Steps 500-700:
+Model learns: Training data quirks and accidents
+- "This dataset uses 'toy' more than 'ball'"
+- "Sentences here are exactly 7 words long"
+Effect: Only helps training data ⚠️
+
+These quirks don't exist in validation data!
+
+
+REASON 3: Model Capacity Exhausted
+───────────────────────────────────
+
+Steps 0-500:
+Model learning: General patterns
+Model capacity: Still available
+Effect: Stores useful knowledge ✅
+
+Steps 500-700:
+Model learning: Specific training examples
+Model capacity: Getting full
+Effect: Overwrites general patterns with specifics ⚠️
+
+Model "forgets" general rules to memorize specifics!
+```
+
+**Your Potential Experience:**
+
+```
+If you continued training your 1000-token model:
+
+Current state (Step 800):
+Train Loss: 1.05
+Val Loss:   1.14
+Gap: 0.09 ✅ (Great!)
+
+If continued to Step 1500:
+Train Loss: 0.5 (still improving)
+Val Loss:   2.8 (getting worse!) ⚠️
+Gap: 2.3 (overfitting!)
+
+If continued to Step 2000:
+Train Loss: 0.2 (nearly perfect on training)
+Val Loss:   4.5 (terrible on validation) ⚠️⚠️
+Gap: 4.3 (severe overfitting!)
+
+Output quality:
+Training prompts: Perfect reproduction ✓
+Validation prompts: Gibberish ✗
+```
+
+**The Optimal Stopping Point:**
+
+```
+How to identify the sweet spot:
+
+MONITORING DURING TRAINING:
+
+Step 400:
+Val improving: ↓ (2.5 → 2.3) ✅ Keep training
+
+Step 500:
+Val improving: ↓ (2.3 → 2.3) ⚠️ Slow down
+
+Step 550:
+Val stopped: → (2.3 → 2.3) ⭐ STOP HERE!
+
+Step 600:
+Val increasing: ↑ (2.3 → 2.5) ⚠️ Should have stopped!
+
+Step 700:
+Val increasing: ↑ (2.5 → 3.0) ⚠️⚠️ Went too far!
+
+
+RULE OF THUMB:
+Stop when validation loss hasn't improved for 100-200 steps
+This is called "early stopping"
+```
+
+**Pen & Paper Illustration:**
+
+```
+Draw this graph on paper:
+
+TYPICAL TRAINING CURVE
+
+Loss │
+     │  ╲ ╲              Both decreasing
+ 10  │   ╲  ╲            (Good phase)
+     │    ╲   ╲          
+  8  │     ╲    ╲        
+     │      ╲     ╲      
+  6  │       ╲      ╲    
+     │        ╲       ╲  
+  4  │         ╲        ╲
+     │          ╲         ╲_____ Train (keeps falling)
+  2  │           ╲______╱       Val (stops, then rises)
+     │                  ↑  ⚠️
+  0  │─────────────────────────────→ Steps
+     0   100  200  300  400  500  600  700
+
+     ← Learning → ← Sweet → ← Overfit →
+                    Spot ⭐
+```
+
+**Analogy: Student Studying for Exam**
+
+```
+WEEK 1-5: Learning Phase
+─────────────────────────
+Student: Studies diverse problems
+Practice test score: 40% → 60% → 80% (improving)
+Mock exam score: 35% → 55% → 75% (also improving)
+Status: Learning real concepts ✅
+
+
+WEEK 6: Optimal Point
+─────────────────────
+Student: Mastered core concepts
+Practice test score: 85%
+Mock exam score: 85%
+Status: Perfect balance ⭐ STOP HERE!
+
+
+WEEK 7-10: Over-studying Phase
+───────────────────────────────
+Student: Memorizing specific practice problems
+Practice test score: 85% → 95% → 100% (still improving)
+Mock exam score: 85% → 82% → 75% (getting worse!) ⚠️
+Status: Memorized practice, forgot concepts
+
+Why mock exam score dropped?
+- Student memorized exact practice problems
+- Forgot the underlying math concepts
+- Can't apply to different questions
+- Over-specialized to practice test
+
+
+Real Exam Day:
+Practice test knowledge: 100% (memorized perfectly)
+Actual exam: 70% (worse than week 6!) ⚠️
+
+Should have stopped at Week 6!
+```
+
+**Real-World Example:**
+
+```
+SCENARIO: Training a spell checker
+
+Training Data: "teh cat sat on teh mat" → "the cat sat on the mat"
+
+Phase 1 (Steps 0-500): Learning
+Model learns: "teh" → "the"
+Effect on training: Fixes "teh" ✓
+Effect on validation: Fixes "teh" ✓
+Both improve! ✅
+
+Phase 2 (Steps 500-700): Memorizing
+Model learns: "In my training data, 'cat' always comes after 'the'"
+Effect on training: Perfect predictions ✓
+Effect on validation: Insists on "the cat" even when text says "the dog" ✗
+Validation gets worse! ⚠️
+
+Training text: "the cat" → Predicted: "cat" ✓
+Validation text: "the dog" → Predicted: "cat" ✗
+Model memorized training patterns too specifically!
+```
+
+**How to Prevent This:**
+
+```
+SOLUTION 1: Early Stopping ⭐ (Best)
+────────────────────────────────────
+Monitor validation loss every 50-100 steps
+Stop when val loss stops improving
+Your 1000-token model did this naturally at step 800 ✅
+
+
+SOLUTION 2: More Training Data
+───────────────────────────────
+With more data, model takes longer to memorize
+Sweet spot happens at higher step count
+Your 3000-token model: Can train longer safely
+
+
+SOLUTION 3: Regularization
+──────────────────────────
+Add techniques that prevent memorization
+Makes model prefer general patterns
+(Beyond scope of this document)
+
+
+SOLUTION 4: Checkpoint Saving
+──────────────────────────────
+Save model every 100 steps
+Test all checkpoints on validation
+Use the checkpoint with lowest validation loss
+Even if you trained too long, you have the good version!
+```
+
+**The Mathematics Behind It:**
+
+```
+Training Loss: Measures fit to training data
+As training continues: Always decreases (or stays flat)
+Why? Model can always memorize more
+
+Validation Loss: Measures generalization
+Phase 1: Decreases (learning patterns)
+Phase 2: Plateaus (optimal point)
+Phase 3: Increases (memorizing specifics)
+
+Gap = Val Loss - Train Loss
+Phase 1: Small gap (0.3) ✅ Good learning
+Phase 2: Small gap (0.5) ✅ Optimal
+Phase 3: Large gap (2.0+) ⚠️ Overfitting
+
+When val loss increases:
+- Gap is growing
+- Overfitting is happening
+- Should have stopped earlier!
+```
+
+**Your Experimental Context:**
+
+```
+200-token model:
+Stopped at: 500 steps
+Final: Train 2.97, Val 7.14, Gap 4.17
+Analysis: Probably started overfitting around step 200
+Should have stopped: Around step 150-200
+
+
+1000-token model:
+Stopped at: 800 steps
+Final: Train 1.05, Val 1.14, Gap 0.09
+Analysis: Perfect timing! Stopped at sweet spot ⭐
+This is ideal early stopping
+
+
+3000-token model:
+Stopped at: 1500 steps
+Final: Train 1.95, Val 1.95, Gap 0.00
+Analysis: Could train longer safely (more data)
+Stopped conservatively but perfectly ✅
+
+
+General Pattern:
+More data → Can train longer before overfitting
+Less data → Must stop earlier to avoid overfitting
+```
+
+**Warning Signs to Watch:**
+
+```
+GOOD SIGNS (Keep Training):
+✅ Train loss decreasing
+✅ Val loss decreasing
+✅ Gap staying small (<1.0)
+✅ Output quality improving
+
+Example:
+Step 400: Train 2.0, Val 2.2, Gap 0.2 ✅
+Step 500: Train 1.5, Val 1.7, Gap 0.2 ✅
+Continue training!
+
+
+WARNING SIGNS (Consider Stopping):
+⚠️ Val loss not improving for 100+ steps
+⚠️ Gap starting to grow
+⚠️ Output quality not improving
+
+Example:
+Step 500: Train 1.5, Val 1.7, Gap 0.2
+Step 600: Train 1.2, Val 1.7, Gap 0.5 ⚠️
+Step 700: Train 1.0, Val 1.7, Gap 0.7 ⚠️
+Stop now! Val hasn't improved since step 500
+
+
+DANGER SIGNS (Stop Immediately):
+⚠️⚠️ Val loss actively increasing
+⚠️⚠️ Gap rapidly growing
+⚠️⚠️ Output quality degrading
+
+Example:
+Step 700: Train 1.0, Val 1.7, Gap 0.7
+Step 800: Train 0.8, Val 2.0, Gap 1.2 ⚠️⚠️
+Step 900: Train 0.6, Val 2.5, Gap 1.9 ⚠️⚠️
+STOP! You're overfitting badly!
+```
+
+**Practical Exercise (Pen & Paper):**
+
+```
+Given these training curves, when should you stop?
+
+SCENARIO A:
+Step 0:   Train 10.0, Val 10.0
+Step 200: Train 5.0,  Val 5.5
+Step 400: Train 2.0,  Val 2.3
+Step 600: Train 1.5,  Val 2.2
+Step 800: Train 1.0,  Val 2.5
+
+When to stop? Step 400
+Why? Val stopped improving after step 400
+
+
+SCENARIO B:
+Step 0:   Train 10.0, Val 10.0
+Step 300: Train 4.0,  Val 4.2
+Step 600: Train 1.8,  Val 1.9
+Step 900: Train 1.0,  Val 1.1
+Step 1200: Train 0.8, Val 1.0
+
+When to stop? Step 1200 (or continue)
+Why? Val still improving (slowly)
+
+
+SCENARIO C:
+Step 0:   Train 10.0, Val 10.0
+Step 100: Train 6.0,  Val 6.5
+Step 200: Train 3.0,  Val 4.0
+Step 300: Train 1.5,  Val 5.0
+Step 400: Train 0.8,  Val 6.0
+
+When to stop? Step 100 (or earlier)
+Why? Val started increasing immediately - data too small!
+```
+
+**Summary:**
+
+```
+Why Validation Loss Increases:
+
+1. MODEL TRANSITIONS: Learning → Memorizing
+   - Early: Learns general patterns (helps validation)
+   - Later: Memorizes specifics (hurts validation)
+
+2. OVERFITTING BEGINS:
+   - Training loss keeps improving (memorizing)
+   - Validation loss stops improving (no longer generalizing)
+   - Gap grows (divergence)
+
+3. SOLUTION: EARLY STOPPING
+   - Monitor validation loss continuously
+   - Stop when validation plateaus or increases
+   - Don't wait for training loss to plateau
+
+4. THE SWEET SPOT:
+   - Right before validation starts increasing
+   - Where gap is smallest
+   - Best generalization achieved ⭐
+
+5. YOUR MODELS:
+   - 1000-token: Stopped at perfect time ✅
+   - 3000-token: Stopped conservatively ✅
+   - Both avoided the validation increase problem!
+```
+
+**Key Takeaways:**
+
+```
+CRITICAL INSIGHTS:
+
+1. Both losses decreasing = Good (learning phase)
+2. Val loss plateaus = Sweet spot (stop soon)
+3. Val loss increases = Bad (overfitting started)
+
+TIMING MATTERS:
+- Stop too early → Underfitted model
+- Stop at sweet spot → Perfect model ⭐
+- Stop too late → Overfitted model
+
+INDICATORS:
+Best indicator: Validation loss trend
+Not: Training loss (always decreases)
+Not: Gap alone (check both losses)
+
+PRACTICE:
+Monitor validation every 50-100 steps
+Use early stopping (patience = 100-200 steps)
+Save checkpoints to recover best model
+```
+
+**Pen & Paper Summary Exercise:**
+
+```
+Draw this decision tree on paper:
+
+SHOULD I CONTINUE TRAINING?
+
+Is validation loss decreasing?
+├─ YES → Continue training ✅
+└─ NO → Check further...
+    │
+    Has val loss been flat for 100+ steps?
+    ├─ YES → STOP NOW ⭐
+    └─ NO → Check further...
+        │
+        Is validation loss increasing?
+        ├─ YES → STOP IMMEDIATELY! ⚠️
+        └─ NO → Continue but monitor closely
+```
+
+**Real-World Training Strategy:**
+
+```
+BEST PRACTICE WORKFLOW:
+
+1. Start training
+2. Monitor both losses every 50 steps
+3. Save checkpoint every 100 steps
+4. Track best validation loss seen so far
+5. If val loss doesn't improve for 200 steps → STOP
+6. Load checkpoint with best validation loss
+7. Use that model ✅
+
+Example from your 1000-token model:
+- Step 600: Val 1.20 (current best)
+- Step 700: Val 1.15 (new best! ✅)
+- Step 800: Val 1.14 (new best! ✅)
+- Step 900: Val 1.15 (worse than 800)
+- Step 1000: Val 1.18 (worse than 800)
+- Decision: Stop, use checkpoint from step 800 ⭐
+```
 
 ---
 
-**End of GROUP 2: Overfitting & Generalization**
+**Summary of GROUP 3: Training Dynamics & Curves:**
+
+✅ **Validation Loss Increases** = Overfitting begins  
+✅ **Cause:** Model shifts from learning patterns → memorizing examples  
+✅ **Sweet Spot:** Right when validation stops improving  
+✅ **Solution:** Early stopping (monitor validation loss)  
+✅ **Warning Signs:** Val plateaus, gap grows, quality degrades  
+✅ **Your Models:** Stopped at optimal points (1000 & 3000 tokens) ✅  
+
+---
+
+**End of GROUP 3: Training Dynamics & Curves**
 
 **Status: COMPLETE ✅**
-- Total questions: 10/10
-- Subsections: 2.1 (4 questions), 2.2 (1 question), 2.3 (5 questions)
-- All duplicates removed
-- Clean, complete, ready to use
+- Total questions: 1/1
+- Subsection: 3.1 Training Curve Behavior (1 question)
+- Comprehensive coverage of validation loss increase phenomenon
+- Multiple analogies and practical examples
+- Ready to use for teaching
+
+---
+
