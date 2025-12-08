@@ -4265,8 +4265,6 @@ Example from your 1000-token model:
 
 ---
 
-# Machine Learning Concepts - Complete Learning Guide
-
 ## **GROUP 4: Data & Model Capacity**
 *Build after understanding overfitting - explores resource constraints*
 
