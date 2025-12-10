@@ -1,0 +1,1919 @@
+
+# File: 07-page-embeddings.py
+from embeddings_utils import get_texts_embeddings
+from embeddings_utils import get_pdf_page_embeddings
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
+
+def main():
+    file_obj_embed = []
+    logging.debug("Main function started")
+    pdf_file_path = "user_data/cholas.pdf" 
+
+    page_embedings, text_bytes = get_pdf_page_embeddings(pdf_file_path)
+    logging.debug(f"Retrieved text from PDF of length: {len(text_bytes)}")
+
+    file_embed = get_texts_embeddings(text_bytes)
+    logging.debug(f"Generated embeddings dictionary with text length: {len(file_embed['text'])} and embedding length: {len(file_embed['text-embedding'])}")
+
+    file_obj_embed.append({'file': pdf_file_path, 'page_emb': page_embedings, 'file_embd': file_embed})
+    
+    for file_obj in file_obj_embed:
+        print()
+        print(f"{file_obj['file']}: Page text and Embeddings....")
+        for p in file_obj['page_emb']:
+            print(f"\tPage Number :{p['page_number']}")
+            print(f"\tPage Text :{p['text'][:20]}...(truncated to 30 bytes)..len :{len(p['text'])}")
+            print(f"\tPage text embed :{p['text-embedding'][:5]}...(truncated for brevity)")
+            print()
+        print(f"\tFile text :{file_obj['file_embd']['text'][:20]}...(truncated to 50 bytes)...len :{len(file_obj['file_embd']['text'])}")
+        print(f"\tFile Embeddings :{file_embed['text-embedding'][:5]}...(truncated for brevity)")
+        print()
+        
+    return
+
+
+if __name__ == "__main__":
+    main()
+
+==================================================
+
+# File: 12-Load-Emb-From-json.py
+import pandas as pd
+
+def load_embeddings_from_json(text_embeddings_json):
+    dataframe = pd.read_json(text_embeddings_json)
+
+    return dataframe
+
+def main():
+    json_embeddings = 'embeddings/cholas.json'
+ 
+    text_df = load_embeddings_from_json(json_embeddings)
+
+    print(text_df.head()) 
+    print(text_df.columns)
+
+    return True
+  
+if __name__ == "__main__":
+    main()
+    
+
+==================================================
+
+# File: 24-Search-VDB.py
+import chromadb
+
+def list_all_collections(vdb_name):
+    client = chromadb.PersistentClient(path=vdb_name)
+    return client.list_collections()
+
+def dump_collection_entries(collection):
+    data = collection.get()
+    print(data)
+
+def dump_selected_entries(collection):
+    data = collection.get(include=["documents", "metadatas"])
+    print(data)
+
+def vdb_list_collections(collections):
+    for collection in collections:
+        print(f"Collection ID: {collection.id}")
+
+def main():
+    vdb_name = "vectDB/pdf-vectorDB"
+    
+    collections = list_all_collections(vdb_name)
+    
+    for coll in collections:
+        dump_collection_entries(coll)
+
+    for coll in collections:
+        dump_selected_entries(coll)
+
+    vdb_list_collections(collections)
+    
+    return
+    
+if __name__ == "__main__":
+    main()
+
+==================================================
+
+# File: setup.py
+from setuptools import setup
+import os
+
+# Create folders
+folders = ['vectDB', 'embeddings']
+for folder in folders:
+    os.makedirs(folder, exist_ok=True)
+
+setup(
+    name="VectorDB Operations",
+    version="0.1",
+    install_requires=open('requirements.txt').readlines(),
+)
+
+
+==================================================
+
+# File: 03-git-pdfs.py
+from pathlib import Path
+
+def list_pdf_files_in_git_repo(repo_path):
+    repo = Path(repo_path)
+    pdf_files = [
+        str(file)
+        for file in repo.rglob('*.pdf')
+        if '.git' not in file.parts
+    ]
+    return pdf_files
+
+def main():
+    base_dir_path = "/home/bhagavan/test_repos"
+    files = list_pdf_files_in_git_repo(base_dir_path)
+
+    print(f"Found {len(files)} files in :{base_dir_path}")
+    for i, file in enumerate(files, 1):
+        print(f"\t{i}. {file}")
+
+    print()
+  
+if __name__ == "__main__":
+    main()
+    
+
+==================================================
+
+# File: 06-pdf-embeddings.py
+import logging
+from embeddings_utils import get_texts_embeddings
+from embeddings_utils import get_pdf_text
+
+logging.basicConfig(level=logging.DEBUG)
+
+def main():
+    logging.debug("Main function started")
+    pdf_file_path = "user_data/ramayan.pdf"  # Replace with your PDF file path
+
+    text_bytes = get_pdf_text(pdf_file_path)
+    logging.debug(f"Retrieved text from PDF of length: {len(text_bytes)}")
+
+    embed_dict = get_texts_embeddings(text_bytes)
+    logging.debug(f"Generated embeddings dictionary with text length: {len(embed_dict['text'])} and embedding length: {len(embed_dict['text-embedding'])}")
+
+    print(f"Text...\n{embed_dict['text'][:50]}... (truncated for brevity)")  # Display the first 500 characters
+    print(f"Embeddings...\n{embed_dict['text-embedding'][:10]}... (truncated for brevity)")  # Display first 10 embedding values
+
+
+if __name__ == "__main__":
+    main()
+
+==================================================
+
+# File: 25-Search-VDB-by-ID.py
+import logging
+from dump_utils import smart_print_with_list_trimming
+from chromadb_utils import get_or_create_vector_db
+
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+
+def read_collection_by_name(collection):
+    results = collection.get()
+    return results
+
+def read_page_collection(collection, id_value):
+    results = collection.get(ids=[id_value], include=["documents", "metadatas", "embeddings"])
+    return results
+
+def read_selected_sections_02(collection):
+    results = collection.get(include=["documents"])
+    return results
+
+def main():
+    vdb_name = "vectDB/pdf-vectorDB"
+    coll_name = "pdf-page-embeddings"
+
+    collection = get_or_create_vector_db(vdb_name, coll_name)
+
+    print("Dumping ChromaDB content...")
+    retval = read_collection_by_name(collection)
+    smart_print_with_list_trimming(retval)
+    
+    id_value = "page-id-1"
+    print(f"Search ChromaDB content id :{id_value}...")
+    retval = read_page_collection(collection, id_value)
+    smart_print_with_list_trimming(retval)
+
+    id_value = "chunk-id-1"
+    retval = read_page_collection(collection, id_value)
+    smart_print_with_list_trimming(retval)
+
+    print("Dumping ChromaDB ONLY document list...")
+    retval = read_selected_sections_02(collection)
+    smart_print_with_list_trimming(retval)
+
+    return
+    
+if __name__ == "__main__":
+    main()
+
+==================================================
+
+# File: 08-chunk-embeddings.py
+from dump_utils import smart_print_with_list_trimming
+from embeddings_utils import get_pdf_embeddings
+
+import logging
+logging.basicConfig(level=logging.DEBUG)
+
+def main():
+    file_obj_embed = []
+    logging.debug("Main function started")
+    pdf_file_path = "user_data/cholas.pdf" 
+    
+    doc_embeddings = get_pdf_embeddings(pdf_file_path)
+    smart_print_with_list_trimming(doc_embeddings)
+    
+if __name__ == "__main__":
+    main()
+
+
+==================================================
+
+# File: 14-Embedding-Producer.py
+# https://www.youtube.com/watch?v=QSW2L8dkaZk
+
+import chromadb
+import csv
+import sys
+import time
+from chromadb.utils import embedding_functions
+from pdbwhereami import whereami
+
+def producer_stream_csv_data(collection, csvdata, batchsize=0, queue=None):
+    documents = []
+    metadata = []
+    ids = []
+    rfd = 0
+    whereami(f"Embedding csv data csv file name:{csvdata}")
+
+    try:
+        rfd = open(csvdata)
+    except IOError as err:
+        whereami(f"Error in opening file err :{err}")
+        exit(1)
+
+    csvfd = csv.reader(rfd)
+    next(csvfd) # skip column header
+        
+    for i, row in enumerate(csvfd, 2):
+        documents.append(row[2])
+        metadata.append({'type' : row[1]})
+        ids.append(row[0])
+
+        results = collection.get(ids=row[0])
+        if (len(results['ids']) != 0):
+            continue
+        
+        whereami(f"ids      :{ids}")
+        whereami(f"metadata :{metadata}")
+        whereami(f"docs     :{documents}")
+        print()
+        collection.add(documents=documents, metadatas=metadata, ids=ids)
+        metadata = []
+        documents = []
+        ids = []
+        time.sleep(3)
+        
+    whereami(f"Finished Embedding csv data :{csvdata}")
+
+def server_init_croma_db(vectdb_name, coll_name):
+    whereami()
+
+    client = chromadb.PersistentClient(path=vectdb_name)
+    
+    sentence_transformer_ef = embedding_functions.SentenceTransformerEmbeddingFunction(model_name="all-mpnet-base-v2")
+    collection = client.get_or_create_collection(name=coll_name, embedding_function=sentence_transformer_ef)
+    return collection
+
+def producer_create_embeddings(collection, csvdata):
+
+    producer_stream_csv_data(collection, csvdata)
+    return
+
+def dump_collection_details(collection):
+    print(collection.get())
+    count = collection.count()   
+    print()
+    whereami(f"collection count :{count}")
+    print()
+
+def delete_collection_by_name(collection_name):
+    client = chromadb.Client()
+    
+    try:
+        client.delete_collection(name=collection_name)
+        whereami(f"Successfully Deleted collection :{collection_name}")
+    except ValueError as err:
+        whereami(f"Collection doesn't exists :{err}")
+        pass
+        
+    return
+
+def main():
+    vectdb_name = "aura-vectorDB"
+    collection_name = "about-india"
+    csvdata = "./data/indian_history.csv"
+    
+    # delete_collection_by_name(collection_name)
+    
+    collection = server_init_croma_db(vectdb_name, collection_name)
+    producer_create_embeddings(collection, csvdata)
+
+if (__name__ == "__main__"):
+    main()
+
+==================================================
+
+# File: 19-Search-VDB-by-ID.py
+from chromadb_utils import get_or_create_vector_db
+from chromadb_utils import vdb_search_by_id
+
+def main():
+    vdb_name = "vectDB/progrmminVDB"
+    coll_name = "programming"
+    
+    collection = get_or_create_vector_db(vdb_name, coll_name)
+
+    retval = vdb_search_by_id(collection, "1")
+    print(retval)
+    return True
+  
+if __name__ == "__main__":
+    main()
+
+==================================================
+
+# File: 09-pdf-embeddings-csv.py
+import pandas as pd
+import json
+import fitz
+import numpy as np
+from pprint import pprint
+from vertexai.language_models import TextEmbeddingModel
+from embeddings_utils import get_pdf_embeddings
+
+import logging
+logging.basicConfig(level=logging.DEBUG)
+
+def save_to_dataframe_to_csv(pdf_data, csv_path):
+    df = pd.DataFrame([pdf_data])
+
+    df.to_csv(csv_path, index=False)
+    logging.info(f"Data saved to {csv_path}")
+    
+    return df
+
+def main():
+    pdf_file_path = "user_data/cholas.pdf" 
+    csv_embd_path = "embeddings/cholas.csv" 
+
+    doc_embeddings = get_pdf_embeddings(pdf_file_path)
+    
+    df = save_to_dataframe_to_csv(doc_embeddings, csv_embd_path)
+    
+    logging.info("Process completed successfully.")
+    print(df.head())
+
+
+if __name__ == "__main__":
+    main()
+
+==================================================
+
+# File: 16-multiple-queries.py
+# https://www.youtube.com/watch?v=QSW2L8dkaZk
+
+import json
+import chromadb
+import csv
+import sys
+from chromadb.utils import embedding_functions
+from pdbwhereami import whereami
+
+def client_query_data(collection, query, result_count=2):
+    whereami(f"Querying: Query :{query}")    
+
+    details = ['distances', 'metadatas', 'documents']
+    results = collection.query(query_texts = query, n_results=result_count, include=details)
+    
+    return(results)
+
+def producer_stream_csv_data(collection, csvdata, batchsize=0, queue=None):
+    documents = []
+    metadata = []
+    ids = []
+    rfd = 0
+    whereami(f"Embedding csv data csv file name:{csvdata}")
+
+    try:
+        rfd = open(csvdata)
+    except IOError as err:
+        whereami(f"Error in opening file err :{err}")
+        exit(1)
+
+    csvfd = csv.reader(rfd)
+    next(csvfd) # skip column header
+        
+    for i, row in enumerate(csvfd, 2):
+        documents.append(row[2])
+        metadata.append({'type' : row[1]})
+        ids.append(row[0])
+
+        results = collection.get(ids=row[0])
+        if (len(results['ids']) != 0):
+            continue
+        
+        whereami(f"ids      :{ids}")
+        whereami(f"metadata :{metadata}")
+        whereami(f"docs     :{documents}")
+        print()
+        collection.add(documents=documents, metadatas=metadata, ids=ids)
+        metadata = []
+        documents = []
+        ids = []
+        
+    whereami(f"Finished Embedding csv data :{csvdata}")
+
+def server_init_croma_db(vectdb_name, coll_name):
+    whereami()
+
+    client = chromadb.PersistentClient(path=vectdb_name)
+    
+    sentence_transformer_ef = embedding_functions.SentenceTransformerEmbeddingFunction(model_name="all-mpnet-base-v2")
+    collection = client.get_or_create_collection(name=coll_name, embedding_function=sentence_transformer_ef)
+    return collection
+
+def producer_create_embeddings(collection, csvdata):
+
+    producer_stream_csv_data(collection, csvdata)
+    return
+
+def dump_collection_details(collection):
+    print(collection.get())
+    count = collection.count()   
+    print()
+    whereami(f"collection count :{count}")
+    print()
+
+def delete_collection_by_name(collection_name):
+    client = chromadb.Client()
+    
+    try:
+        client.delete_collection(name=collection_name)
+        whereami(f"Successfully Deleted collection :{collection_name}")
+    except ValueError as err:
+        whereami(f"Collection doesn't exists :{err}")
+        pass
+        
+    return
+
+def dump_results(jdata):
+    # jdata = json.loads(reply)
+
+    ids = jdata["ids"][0]
+    metadata = jdata["metadatas"][0]
+    documents = jdata["documents"][0]
+
+    # whereami(f"ids       :{ids}")
+    # whereami(f"metadata  :{metadata}")
+    # whereami(f"documents :{documents}")
+
+    for i, id in enumerate(ids):
+        print(f"\t{id}: {metadata[i]['type']} -->{documents[i]}")
+
+queries = [
+    {'query' : ['Kidnap'], 'qcount' : 5},
+    {'query' : ['Swayamvara'], 'qcount' : 2},
+]    
+
+def main():
+    vectdb_name = "aura-vectorDB"
+    collection_name = "about-india"
+    csvdata = "../data/indian_history.csv"
+    
+    # delete_collection_by_name(collection_name)
+    
+    collection = server_init_croma_db(vectdb_name, collection_name)
+    producer_create_embeddings(collection, csvdata)
+
+    # dump_collection_details(collection)
+
+    for q in queries:
+        reply = client_query_data(collection, q['query'], result_count=q['qcount'])
+        dump_results(reply)
+        
+if (__name__ == "__main__"):
+    main()
+
+==================================================
+
+# File: t.py
+import chromadb
+import numpy as np
+
+from vertexai.language_models import TextEmbeddingModel
+
+text_embedding_model = TextEmbeddingModel.from_pretrained("text-embedding-004")
+
+def get_or_create_vector_db(vdb_name, cname):
+    client = chromadb.PersistentClient(path=vdb_name)
+    collection = client.get_or_create_collection(name=cname)
+
+    return collection    
+
+def get_text_embedding(text, output_dimensionality=None):
+    embeddings = text_embedding_model.get_embeddings([text], output_dimensionality=output_dimensionality)
+    embedding_values = embeddings[0].values
+    return embedding_values
+
+def vdb_search_text_vectorDB(collection, id_value):
+    results = collection.get(ids=[id_value], include=["documents", "metadatas", "embeddings"])
+    return results
+
+# Example text data
+text_data = [
+    "ChromaDB is an open-source vector database.",
+    "Embeddings can be used for search, recommendation, and clustering.",
+    "Chroma stores vectors in a highly efficient way."
+]
+
+# Generate embeddings for each string
+embeddings = [get_text_embedding(text) for text in text_data]
+
+vdb_name = "vectDB/sample"
+coll_name = "sample"
+vdb = get_or_create_vector_db(vdb_name, coll_name)
+# Insert strings and embeddings into ChromaDB
+for i, text in enumerate(text_data):
+    vdb.add(
+        documents=[text],  # Text data
+        metadatas=[{"source": f"source_{i}"}],  # Optional metadata
+        embeddings=[embeddings[i]],  # Embeddings
+        ids=[str(i)]  # Unique ID for each document
+    )
+
+# Querying the collection with a new text to find similar embeddings
+query_text = "Tell me about vector databases."
+query_embedding = get_text_embedding(query_text)
+
+# Retrieve the most similar document
+results = vdb.query(
+    query_embeddings=[query_embedding],
+    n_results=1
+)
+
+print("Most similar document:", results['documents'][0])
+
+retval = vdb_search_text_vectorDB(vdb, "1")
+print(retval)
+
+
+==================================================
+
+# File: dump_utils.py
+from pprint import pprint
+
+def smart_print_with_list_trimming(dictionary, max_item_length=20, max_list_items=5):
+    def trim_value(value):
+        if isinstance(value, dict):  # Handle nested dictionaries
+            return {k: trim_value(v) for k, v in value.items()}
+        elif isinstance(value, list):  # Trim list items and limit list length
+            return [trim_value(v) for v in value[:max_list_items]]
+        elif isinstance(value, str) and len(value) > max_item_length:  # Trim long strings
+            return value[:max_item_length] + "..."
+        else:
+            return value
+
+    trimmed_dict = {k: trim_value(v) for k, v in dictionary.items()}
+    pprint(trimmed_dict)
+    print("-" * 40)
+    print()
+
+==================================================
+
+# File: 17-optimized-embedding.py
+# https://www.youtube.com/watch?v=QSW2L8dkaZk
+
+import json
+import chromadb
+import csv
+import sys
+from chromadb.utils import embedding_functions
+from pdbwhereami import whereami
+
+def client_query_data(collection, query, result_count=2):
+    whereami(f"Querying: Query :{query}")    
+
+    details = ['distances', 'metadatas', 'documents']
+    results = collection.query(query_texts = query, n_results=result_count, include=details)
+    
+    return(results)
+
+def producer_stream_csv_data(collection, csvdata, batchsize=0, queue=None):
+    documents = []
+    metadata = []
+    ids = []
+    rfd = 0
+    whereami(f"Embedding csv data csv file name:{csvdata}")
+
+    try:
+        rfd = open(csvdata)
+    except IOError as err:
+        whereami(f"Error in opening file err :{err}")
+        exit(1)
+
+    csvfd = csv.reader(rfd)
+    next(csvfd) # skip column header
+        
+    for i, row in enumerate(csvfd, 2):
+        documents.append(row[2])
+        metadata.append({'type' : row[1]})
+        ids.append(row[0])
+
+        results = collection.get(ids=row[0])
+        if (len(results['ids']) != 0):
+            continue
+        
+        whereami(f"ids      :{ids}")
+        whereami(f"metadata :{metadata}")
+        whereami(f"docs     :{documents}")
+        print()
+        collection.add(documents=documents, metadatas=metadata, ids=ids)
+        metadata = []
+        documents = []
+        ids = []
+        
+    whereami(f"Finished Embedding csv data :{csvdata}")
+
+def server_init_croma_db(vectdb_name, coll_name):
+    whereami()
+
+    client = chromadb.PersistentClient(path=vectdb_name)
+    
+    sentence_transformer_ef = embedding_functions.SentenceTransformerEmbeddingFunction(model_name="all-mpnet-base-v2")
+    collection = client.get_or_create_collection(name=coll_name, embedding_function=sentence_transformer_ef)
+    return collection
+
+def producer_create_embeddings(collection, csvdata):
+
+    producer_stream_csv_data(collection, csvdata)
+    return
+
+def dump_collection_details(collection):
+    print(collection.get())
+    count = collection.count()   
+    print()
+    whereami(f"collection count :{count}")
+    print()
+
+def delete_collection_by_name(collection_name):
+    client = chromadb.Client()
+    
+    try:
+        client.delete_collection(name=collection_name)
+        whereami(f"Successfully Deleted collection :{collection_name}")
+    except ValueError as err:
+        whereami(f"Collection doesn't exists :{err}")
+        pass
+        
+    return
+
+def dump_results(jdata):
+    # jdata = json.loads(reply)
+
+    ids = jdata["ids"][0]
+    metadata = jdata["metadatas"][0]
+    documents = jdata["documents"][0]
+
+    # whereami(f"ids       :{ids}")
+    # whereami(f"metadata  :{metadata}")
+    # whereami(f"documents :{documents}")
+
+    for i, id in enumerate(ids):
+        print(f"\t{id}: {metadata[i]['type']} -->{documents[i]}")
+    
+def main():
+    vectdb_name = "aura-vectorDB"
+    collection_name = "about-india"
+    csvdata = "../data/indian_history.csv"
+    
+    # delete_collection_by_name(collection_name)
+    
+    collection = server_init_croma_db(vectdb_name, collection_name)
+    producer_create_embeddings(collection, csvdata)
+
+    # dump_collection_details(collection)
+
+    query = ["Kidnap"]
+    reply = client_query_data(collection, query, result_count=5)
+    dump_results(reply)
+
+    query = ["Swayamvara"]
+    reply = client_query_data(collection, query, result_count=5)
+    dump_results(reply)
+
+    # whereami(reply)
+    
+if (__name__ == "__main__"):
+    main()
+
+==================================================
+
+# File: 23-JSON-Emb-to-Vectordb.py
+import pandas as pd
+import chromadb
+import logging
+from chromadb_utils import get_or_create_vector_db
+from chromadb_utils import pdf_store_embeddings_in_vectordb
+from vertexai.language_models import TextEmbeddingModel
+
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+text_embedding_model = TextEmbeddingModel.from_pretrained("text-embedding-004")
+logging.debug("Initialized TextEmbeddingModel")
+
+    
+def load_embeddings_from_json(csv_embeddings):
+    dataframe  = pd.read_json(csv_embeddings)
+    return dataframe
+
+def main():
+    print("NOT IMPLIMENTED...ITS A BUGGY CODE")
+    exit(1)
+    csv_embeddings_path = 'embeddings/cholas.json'
+    vdb_name = "vectDB/pdf-vectorDB"
+    coll_name = "pdf-page-embeddings"
+ 
+    text_df = load_embeddings_from_json(csv_embeddings_path)
+    print(text_df.head()) 
+    print(text_df.columns)
+    
+    data = text_df.to_dict()
+    collection = get_or_create_vector_db(vdb_name, coll_name)
+    pdf_store_embeddings_in_vectordb(collection, data)
+    return True
+  
+if __name__ == "__main__":
+    main()
+
+==================================================
+
+# File: 05-chunk-overlap-basics.py
+from embeddings_utils import get_pdf_text_chunks
+
+def main():
+    pdf_file_path = "user_data/ramayan.pdf"  
+    chunks = get_pdf_text_chunks(pdf_file_path, page_number=0, chunk_size=30, overlap=5)
+    
+    print(f"Total Chunks: {len(chunks)}\n")
+    for i, chunk in enumerate(chunks, 1):
+        print(f"Chunk {i} - len :{len(chunk)}:\n{chunk}\n")
+
+if __name__ == "__main__":
+    main()
+    
+
+
+==================================================
+
+# File: 26-vdb-search-query.py
+from chromadb_utils import get_or_create_vector_db
+from chromadb_utils import vdb_search_by_query
+from chromadb_utils import vdb_search_by_query_ids
+
+def read_collection_by_name(collection):
+    results = collection.get()
+    return results
+
+def read_page_collection(collection, id_value):
+    results = collection.get(ids=[id_value], include=["documents", "metadatas", "embeddings"])
+    return results
+
+def read_selected_sections_02(collection):
+    results = collection.get(include=["documents"])
+    return results
+
+def print_results(s1, s2, s3):
+    print(s1, s2, s3)
+    
+def dump_search_results(query_results):
+    ids = query_results['ids'][0]
+    docs = query_results['documents'][0]
+    distances = query_results['distances'][0]
+    
+    for i, (id, doc, distance) in enumerate(zip(ids, docs, distances), 1):
+        print(f"{i}. ID: {id}")
+        print(f"doc :{doc}")
+        print(f"distance :{distance}")
+        print()
+    return 0
+
+# points to note
+# Query is valid only when the search query-embedding and stored-chunk-embedding dimentions is same
+
+def search_query_01():
+    vdb_name = "vectDB/pdf-vectorDB"
+    coll_name = "ramayan-embeddings"
+
+    collection = get_or_create_vector_db(vdb_name, coll_name)
+    
+    query_text = "Who is the Author of Ramayan"
+    retval = vdb_search_by_query(collection, query_text, n_results=5)
+    dump_search_results(retval)
+
+def search_query_02():
+    vdb_name = "vectDB/pdf-vectorDB"
+    coll_name = "cholas-embeddings"
+
+    collection = get_or_create_vector_db(vdb_name, coll_name)
+    
+    query_text = "When the chola dynasty started?"
+    retval = vdb_search_by_query(collection, query_text, n_results=5)
+    dump_search_results(retval)
+
+def search_query_03():
+    vdb_name = "vectDB/pdf-vectorDB"
+    coll_name = "cholas-embeddings"
+
+    collection = get_or_create_vector_db(vdb_name, coll_name)
+    
+    query_text = "When the chola dynasty started?"
+    
+    retval = vdb_search_by_query_ids(collection=collection, query_text=query_text, only_chunks=True)
+    dump_search_results(retval)
+    
+def main():
+    search_query_01()
+    search_query_02()
+    search_query_03()
+    
+    return True
+  
+if __name__ == "__main__":
+    main()
+
+==================================================
+
+# File: 13-CRUD-CromaDB.py
+import chromadb 
+from chromadb.db.base import UniqueConstraintError
+import json
+from pdbwhereami import whereami
+
+
+def Create_collection():
+    cname = "example1"
+    whereami()
+    client = chromadb.Client()
+    client.create_collection(name=cname)
+
+def Create_existing_collection():
+    cname = "example1"
+    whereami()
+    client = chromadb.Client()
+
+    try:
+        c1 = client.create_collection(name=cname)
+        whereami(f'collection1 :{c1}')
+    except UniqueConstraintError as err:
+        whereami(f'Exception while creating collection :{err}')
+
+def Get_non_existing_collection():
+    cname = "example-none"
+    whereami()
+    client = chromadb.Client()
+
+    try:
+        c1 = client.get_collection(name=cname)
+        whereami(f'collection1 :{c1}')
+    except ValueError as err:
+        whereami(f'Exception while creating collection :{err}')
+        
+def Get_existing_collection():
+    cname = "example1"
+    whereami()
+    client = chromadb.Client()
+
+    try:
+        c1 = client.get_collection(name=cname)
+        whereami(f'collection :{c1}')
+    except chromadb.db.base.UniqueConstraintError as err:
+        whereami(f'Exception while creating collection :{err}')
+    else:
+        whereami('Success in getting existing collection')
+
+def Get_or_create_existing_collection():
+    cname = "example1"
+    whereami()
+    client = chromadb.Client()
+
+    try:
+        c1 = client.get_or_create_collection(name=cname)
+        whereami(f'collection1 :{c1}')
+    except chromadb.db.base.UniqueConstraintError as err:
+        whereami(f'Exception while creating collection :{err}')
+        
+def Get_or_create_new_collection():
+    cname = "example-new"
+    whereami()
+    client = chromadb.Client()
+
+    try:
+        c1 = client.get_or_create_collection(name=cname)
+        whereami(f'collection1 :{c1}')
+    except chromadb.db.base.UniqueConstraintError as err:
+        whereami(f'Exception while creating collection :{err}')
+
+def Save_collection_to_disk():
+    vdb_name = "aura-vectorDB"
+    cname = "programming-coll"
+    
+    client = chromadb.PersistentClient(path=vdb_name)
+    collection = client.get_or_create_collection(name=cname)
+    collection.upsert(
+        documents=["C Programming Language", "Java Script", "Python Scripring and Programming Language"],
+        metadatas=[{"type": "system"}, {"type": "script"}, {"type": "script"}],
+        ids=["1", "2", "3"]
+    )
+
+def Load_collection_from_disk():
+    vdb_name = "aura-vectorDB"
+    cname = "programming-coll"
+    client = chromadb.PersistentClient(path=vdb_name)
+    collection = client.get_or_create_collection(name=cname)
+    
+    print(collection.get())
+    print()
+    
+def Query_collection():
+    vdb_name = "aura-vectorDB"
+    cname = "programming-coll"
+    client = chromadb.PersistentClient(path=vdb_name)
+    collection = client.get_or_create_collection(name=cname)
+
+    results = collection.query(
+        query_texts=["script"],
+        n_results=2,
+        where={"type": "script"}
+    )
+    
+    print(json.dumps(results, sort_keys=True, indent=4))
+    print()
+
+def Query_collection_Where():
+    vdb_name = "aura-vectorDB"
+    cname = "programming-coll"
+    client = chromadb.PersistentClient(path=vdb_name)
+    collection = client.get_or_create_collection(name=cname)
+
+    results = collection.query(
+        query_texts=["script"],
+        n_results=2,
+        where={"type": "script"},
+        where_document={"$contains": "Programming"}
+    )
+    
+    print(json.dumps(results, sort_keys=True, indent=4))
+    print()
+
+def Query_collection_by_id():
+    vdb_name = "aura-vectorDB"
+    cname = "programming-coll"
+    client = chromadb.PersistentClient(path=vdb_name)
+    collection = client.get_or_create_collection(name=cname)
+
+    results = collection.get(ids=['2222'])
+    
+    print(json.dumps(results, sort_keys=True, indent=4))
+    print()
+
+def Update_documents():
+    vdb_name = "aura-vectorDB"
+    cname = "programming-coll"
+    client = chromadb.PersistentClient(path=vdb_name)
+    collection = client.get_or_create_collection(name=cname)
+
+    results = collection.get(ids=['2'])
+    print("Before update...")
+    print(json.dumps(results, sort_keys=True, indent=4))
+    
+    collection.update(
+        documents=["Java Script"],
+        metadatas=[{"type": "script"}],
+        ids=["2"]
+    )    
+
+    results = collection.get(ids=['2'])
+    print("\nAfter update...")
+    print(json.dumps(results, sort_keys=True, indent=4))
+    print()
+
+def Upsert_documents():
+    vdb_name = "aura-vectorDB"
+    cname = "programming-coll"
+    client = chromadb.PersistentClient(path=vdb_name)
+    collection = client.get_or_create_collection(name=cname)
+
+    results = collection.get(ids=['4'])
+    print("Before update...")
+    print(json.dumps(results, sort_keys=True, indent=4))
+    
+    collection.upsert(
+        documents=["Java Script"],
+        metadatas=[{"type": "script"}],
+        ids=["4"]
+    )    
+
+    results = collection.get(ids=['4'])
+    print("\nAfter update...")
+    print(json.dumps(results, sort_keys=True, indent=4))
+    print()
+
+def Delete_documents_by_id():
+    vdb_name = "aura-vectorDB"
+    cname = "programming-coll"
+    client = chromadb.PersistentClient(path=vdb_name)
+    collection = client.get_or_create_collection(name=cname)
+
+    count = collection.count()
+    print(f"Before delete collection count :{count}")
+   
+    collection.delete(ids=["2"])    
+
+    count = collection.count()
+    print(f"After delete collection count :{count}")
+    print()
+
+def Get_documents_count():
+    vdb_name = "aura-vectorDB"
+    cname = "programming-coll"
+    client = chromadb.PersistentClient(path=vdb_name)
+    collection = client.get_or_create_collection(name=cname)
+
+    count = collection.count()
+    print(f"Collection count :{count}")
+    print()
+
+def list_all_collections():
+    client = chromadb.Client()
+    client.get_or_create_collection(name="collection_one")
+    client.get_or_create_collection(name="collection_two")
+
+    print(client.list_collections())
+
+    client.delete_collection(name="collection_one")
+    client.delete_collection(name="collection_two")
+
+    print(client.list_collections())
+    print()
+
+def main():
+    whereami()
+    Create_collection()
+    Create_existing_collection()
+    Get_non_existing_collection()
+    Get_existing_collection()
+    Get_or_create_existing_collection()
+    Get_or_create_new_collection()
+    Save_collection_to_disk()
+    Load_collection_from_disk()
+    Query_collection()
+    Query_collection_Where()
+    Query_collection_by_id()
+    Update_documents()
+    Upsert_documents()
+    Delete_documents_by_id()
+    Get_documents_count()
+    list_all_collections()
+    pass
+    
+if (__name__ == "__main__"):
+    main()
+
+==================================================
+
+# File: 15-embedding-persistent.py
+# https://www.youtube.com/watch?v=QSW2L8dkaZk
+
+import json
+import chromadb
+import csv
+import sys
+from chromadb.utils import embedding_functions
+from pdbwhereami import whereami
+
+def client_query_data(collection, query, result_count=2):
+    whereami(f"Querying: Query :{query}")    
+
+    details = ['distances', 'metadatas', 'documents']
+    results = collection.query(query_texts = query, n_results=result_count, include=details)
+
+    whereami(f"Go the results....")    
+    data = json.dumps(results, indent=4)
+
+    return(data)
+
+def producer_stream_csv_data(fname, collection, batchsize=0, queue=None):
+    documents = []
+    metadata = []
+    ids = []
+    rfd = 0
+    whereami(f"Embedding csv data csv file name:{fname}")
+
+    try:
+        rfd = open(fname)
+    except IOError as err:
+        whereami(f"Error in opening file err :{err}")
+        exit(1)
+
+    csvfd = csv.reader(rfd)
+    next(csvfd) # skip column header
+        
+    for i, row in enumerate(csvfd, 2):
+        documents.append(row[2])
+        metadata.append({'type' : row[1]})
+        ids.append(row[0])
+        
+        whereami(f"ids      :{ids}")
+        whereami(f"metadata :{metadata}")
+        whereami(f"docs     :{documents}")
+        print()
+        collection.add(documents=documents, metadatas=metadata, ids=ids)
+        metadata = []
+        documents = []
+        ids = []
+        
+    whereami(f"Finished Embedding csv data :{fname}")
+
+def server_init_croma_db(coll_name):
+    whereami()
+    vdb_name = "aura-vectorDB"
+    cname = "programming-coll"
+
+    # chroma_client = chromadb.Client()
+    client = chromadb.PersistentClient(path=vdb_name)
+    
+    sentence_transformer_ef = embedding_functions.SentenceTransformerEmbeddingFunction(model_name="all-mpnet-base-v2")
+    collection = client.get_or_create_collection(name=coll_name, embedding_function=sentence_transformer_ef)
+    return collection
+
+def producer_create_embeddings(collection):
+    whereami()
+    fname = "../data/menu_items.csv"
+    fname = "../data/game-of-thrones-test.csv"
+    fname = "../data/game-of-thrones-test.csv"
+    fname = "../data/indian_history.csv"
+
+    producer_stream_csv_data(fname, collection)    
+    return
+
+def dump_collection_details(collection):
+    print(collection.get())
+    count = collection.count()   
+    print()
+    whereami(f"collection count :{count}")
+    print()
+
+def main():
+    coll_name = "menu_collection"
+    
+    whereami()
+    collection = server_init_croma_db(coll_name)
+    
+    producer_create_embeddings(collection)
+
+    dump_collection_details(collection)
+
+    query = ["Who is Hanuman?"]
+    reply = client_query_data(collection, query, result_count=5)
+    whereami(reply)
+    
+if (__name__ == "__main__"):
+    main()
+
+==================================================
+
+# File: 20-Search-VDB-by-Query.py
+import logging
+from chromadb_utils import get_or_create_vector_db
+from chromadb_utils import vdb_search_by_query
+
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+
+def main():
+    vdb_name = "vectDB/progrmminVDB"
+    coll_name = "programming"
+    
+    collection = get_or_create_vector_db(vdb_name, coll_name)
+    logging.debug(f"Success: VectorDB is created")
+
+    query_text = "Programming Language"
+    retval = vdb_search_by_query(collection, query_text)
+    
+    print(retval)
+    return True
+  
+if __name__ == "__main__":
+    main()
+
+==================================================
+
+# File: 01-list-files.py
+from pathlib import Path
+
+def list_all_files(directory_path):
+    directory = Path(directory_path)
+    all_files = [str(file) for file in directory.rglob('*') if file.is_file()]
+    return all_files
+
+def main():
+    base_dir_path = "/home/bhagavan/test_repos"
+    files = list_all_files(base_dir_path)
+
+    print(f"Found {len(files)} files in :{base_dir_path}")
+    for file in files:
+        print(f"{file}")
+        
+    print()
+
+    print(f"Found {len(files)} files in :{base_dir_path}")
+    for i, file in enumerate(files, 1):
+        print(f"\t{i}. {file}")
+  
+if __name__ == "__main__":
+    main()
+    
+
+==================================================
+
+# File: 10-pdf-embeddings-json.py
+import pandas as pd
+from embeddings_utils import get_pdf_embeddings
+
+# Debug logging
+import logging
+logging.basicConfig(level=logging.DEBUG)
+
+def save_to_dataframe_to_json(pdf_data, json_path):
+    df = pd.DataFrame([pdf_data])
+
+    df.to_json(json_path, orient="records", indent=4)
+
+    logging.info(f"Data saved to {json_path}")
+    return df
+
+def main():
+    pdf_file_path = "user_data/cholas.pdf" 
+    json_embd_path = "embeddings/cholas.json" 
+    doc_embeddings = get_pdf_embeddings(pdf_file_path)
+
+    df = save_to_dataframe_to_json(doc_embeddings, json_embd_path)
+    logging.info("Process completed successfully.")
+
+    print(df.head())
+
+if __name__ == "__main__":
+    main()
+
+==================================================
+
+# File: 02-list-git-files.py
+from pathlib import Path
+
+def list_files_in_git_repo(repo_path):
+    repo = Path(repo_path)
+    all_files = [
+        str(file)
+        for file in repo.rglob('*')
+        if file.is_file() and '.git' not in file.parts
+    ]
+    return all_files
+
+
+def main():
+    base_dir_path = "/home/bhagavan/test_repos"
+    files = list_files_in_git_repo(base_dir_path)
+
+    print(f"Found {len(files)} files in :{base_dir_path}")
+    for i, file in enumerate(files, 1):
+        print(f"\t{i}. {file}")
+
+    print()
+  
+if __name__ == "__main__":
+    main()
+    
+
+==================================================
+
+# File: embeddings_utils.py
+import logging
+import fitz
+from vertexai.language_models import TextEmbeddingModel
+from typing import Dict, Optional, Type, TypeVar
+
+def create_chunks_with_overlap(text, page_number=0, chunk_size=256, overlap=32):
+    chunks = []
+    text_bytes = text.encode('utf-8')
+    i = 0
+    for i in range(0, len(text_bytes) - chunk_size + 1, chunk_size - overlap):
+        chunks.append(text_bytes[i:i + chunk_size].strip())
+        
+    if (i == 0):
+        chunks.append(text_bytes)
+    else:
+        chunks.append(text_bytes[i+chunk_size:].strip())
+    
+    return [chunk.decode('utf-8', errors='ignore') for chunk in chunks]
+
+def get_pdf_text_chunks(pdf_path, page_number=0, chunk_size=10, overlap=3):
+    text_bytes = get_pdf_text(pdf_path)
+    
+    print(f"File content, len :{len(text_bytes)}")
+    
+    return create_chunks_with_overlap(text_bytes, page_number=page_number, chunk_size=chunk_size, overlap=overlap)
+
+def get_pdf_text(pdf_path):
+    logging.debug(f"Entering get_pdf_text with pdf_path: {pdf_path}")
+    pdf_text = ""
+
+    with fitz.Document(pdf_path) as pdf:
+        logging.debug(f"Opened PDF file: {pdf_path}, total pages: {len(pdf)}")
+        for page_number, page in enumerate(pdf, start=1):
+            page_text = page.get_text("text")
+            logging.debug(f"Extracted text from page {page_number}: {page_text[:100]}... (truncated for brevity)")
+            pdf_text += page_text
+
+    logging.debug(f"Concatenated text length: {len(pdf_text)}")
+    return pdf_text
+
+
+def get_pdf_page_embeddings(pdf_path):
+    logging.debug(f"Entering get_pdf_text with pdf_path: {pdf_path}")
+    pdf_text = ""
+    pages_embed = []
+
+    with fitz.Document(pdf_path) as pdf:
+        logging.debug(f"Opened PDF file: {pdf_path}, total pages: {len(pdf)}")
+        for page_number, page in enumerate(pdf, start=1):
+            page_text = page.get_text("text")
+            logging.debug(f"Extracted text from page {page_number}: {page_text[:100]}... (truncated for brevity)")
+            
+            page_embed = get_texts_embeddings(page_text)
+            page_embed['page_number'] = page_number
+            pages_embed.append(page_embed)
+            
+            pdf_text += page_text
+
+    logging.debug(f"Concatenated text length: {len(pdf_text)}")
+    return pages_embed, pdf_text
+
+def get_text_embedding_from_text_embedding_model(text, output_dimensionality=None):
+    logging.debug(f"Entering get_text_embedding_from_text_embedding_model with text of length: {len(text)}")
+    
+    text_embedding_model = TextEmbeddingModel.from_pretrained("text-embedding-004")
+    embeddings = text_embedding_model.get_embeddings([text], output_dimensionality=output_dimensionality)
+
+    emb_values = [embedding.values for embedding in embeddings]
+    text_embedding = emb_values[0]
+    logging.debug(f"Extracted embedding values: {text_embedding[:10]}... (truncated for brevity)")
+
+    return text_embedding
+
+
+def get_texts_embeddings(text_data):
+    logging.debug(f"Entering get_texts_embeddings with text_data of length: {len(text_data)}")
+    embeddings_dict = {}
+
+    if not text_data:
+        logging.debug("Empty text_data provided; returning empty embeddings_dict")
+        return embeddings_dict
+
+    text_embed = get_text_embedding_from_text_embedding_model(text=text_data)
+    embeddings_dict["text"] = text_data
+    embeddings_dict["text-embedding"] = text_embed
+
+    return embeddings_dict
+
+def get_text_embedding(text, output_dimensionality=None):
+    logging.debug(f"Generating embeddings for text of length: {len(text)}")
+    text_embedding_model = TextEmbeddingModel.from_pretrained("text-embedding-004")
+    embeddings = text_embedding_model.get_embeddings([text], output_dimensionality=output_dimensionality)
+    embedding_values = embeddings[0].values
+    logging.debug(f"Generated embedding with first 5 values: {embedding_values[:5]}")
+    return embedding_values
+
+
+def get_chunk_embed(chunks):
+    chunk_embeds = []
+    for chunk_id, chunk in enumerate(chunks, 1):
+        chunk_embed = get_texts_embeddings(chunk)
+        chunk_embeds.append({
+            "chunk-id": f'chunk-id-{chunk_id}',
+            "chunk-number": chunk_id,
+            "chunk-text": chunk,
+            "chunk-embedding": chunk_embed["text-embedding"]
+        })
+    return chunk_embeds
+
+def get_pdf_embeddings(pdf_path):
+    logging.debug(f"Entering get_pdf_text with pdf_path: {pdf_path}")
+    pdf_data = {
+        "file-id": str(),
+        "file-name": str(),
+        "file-path": str(),
+        "file-text": str(),
+        "file-embedding": list(),
+        "pages": [
+            # {'page-id': 'page-id-1', 'page-number': 1, 'page-text': '', 'page-embedding': []},
+            # {'page-id': str(), 'page-number': int(), 'page-text': str(), 'page-embedding': list()},
+            # ...
+        ],
+        "chunks": [
+            # {'chunk-id': 'chunk-id-1', 'chunk-number': 1, 'chunk-text': '', 'chunk-embedding': []},
+            # {'chunk-id': str(), 'chunk-number': int(), 'chunk-text': str(), 'chunk-embedding': list()},
+            # ...
+        ]
+    }
+
+    pdf_data['file-id'] = pdf_path.split("/")[-1]
+    pdf_data['file-name'] = pdf_path.split("/")[-1]
+    pdf_data['file-path'] = "/".join(pdf_path.split("/")[:-1]) 
+
+    with fitz.Document(pdf_path) as pdf:
+        logging.debug(f"Opened PDF file: {pdf_path}, total pages: {len(pdf)}")
+        full_text = ""
+
+        for page_number, page in enumerate(pdf, start=1):
+            page_text = page.get_text("text")
+            logging.debug(f"Extracted text from page {page_number}: {page_text[:100]}... (truncated for brevity)")
+
+            page_embed = get_texts_embeddings(page_text)
+            pdf_data["pages"].append({
+                "page-id": f'page-id-{page_number}',
+                'page-number': page_number,
+                "page-text": page_text,
+                "page-embedding": page_embed['text-embedding']
+            })
+
+            full_text += page_text
+
+    pdf_data["file-text"] = full_text
+    pdf_data["file-embedding"] = get_text_embedding_from_text_embedding_model(full_text)
+
+    chunks = create_chunks_with_overlap(full_text)
+    pdf_data["chunks"] = get_chunk_embed(chunks)
+
+    logging.debug("Completed processing PDF file.")
+    return pdf_data
+
+==================================================
+
+# File: 18-text-Emb-to-Vectordb.py
+import chromadb
+import logging
+from chromadb_utils import get_or_create_vector_db
+from chromadb_utils import chromadb_store_data
+from embeddings_utils import get_text_embedding_from_text_embedding_model
+
+def vdb_store_text_embeddings(vdb_collection):
+    ids = ["1", "2", "3"]
+    metadatas = [{"type": "system"}, {"type": "script"}, {"type": "script"}]
+    documents = ["C Programming Language", "Java Script", "Python Scripting and Programming Language"]
+    doc_embeddings = [get_text_embedding_from_text_embedding_model(doc, 5) for doc in documents]
+    print(doc_embeddings)
+    
+    logging.debug(f"Upserting documents into the collection")
+    logging.debug(f"IDs: {ids}")
+    logging.debug(f"Metadata: {metadatas}")
+    logging.debug(f"Documents: {documents}")
+    logging.debug(f"embeddings: {doc_embeddings}")
+
+    chromadb_store_data(vdb_collection, ids=ids, metadatas=metadatas, documents=documents, embeddings=doc_embeddings)
+    logging.info(f"Collection '{vdb_collection.name}' successfully updated.")
+    return True
+
+def main():
+    vdb_name = "vectDB/progrmminVDB"
+    coll_name = "programming"
+    
+    logging.debug(f"Starting main function.")
+    logging.debug(f"Vector DB Path: {vdb_name}")
+    logging.debug(f"Collection Name: {coll_name}")
+
+    vdb = get_or_create_vector_db(vdb_name, coll_name)
+    logging.debug(f"Success: VectorDB is created")
+
+    vdb_store_text_embeddings(vdb)
+    logging.info(f"Program completed successfully.")
+    return True
+  
+if __name__ == "__main__":
+    main()
+
+==================================================
+
+# File: 21-Pdf-Emb-to-Vectordb.py
+import logging
+from chromadb_utils import get_or_create_vector_db
+from chromadb_utils import vectordb_store_page_embeddings, store_embeddings_in_vectordb
+from chromadb_utils import pdf_store_embeddings_in_vectordb
+from embeddings_utils import get_pdf_embeddings
+
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+
+def main():
+    vdb_name = "vectDB/pdf-vectorDB"
+
+    coll_name = "cholas-embeddings"
+    pdf_path = "user_data/cholas.pdf"
+
+    # coll_name = "ramayan-embeddings"
+    # pdf_path = "user_data/ramayan.pdf"
+
+    collection = get_or_create_vector_db(vdb_name, coll_name)
+
+    page_embeddings = get_pdf_embeddings(pdf_path)
+
+    pdf_store_embeddings_in_vectordb(collection, page_embeddings)
+    logging.info("Process completed successfully!")
+    
+    # print(collection.get())
+    # result = collection.get(ids=["page-1"], include=["documents", "metadatas", "embeddings"])
+    # result = collection.get(include=["documents", "metadatas", "embeddings"])
+    # print(result)
+    
+if __name__ == "__main__":
+    main()
+
+==================================================
+
+# File: chromadb_utils.py
+import chromadb
+import logging
+from embeddings_utils import get_text_embedding
+
+def get_or_create_vector_db(vdb_name, cname):
+    logging.debug(f"Initializing ChromaDB PersistentClient with path: {vdb_name}")
+    client = chromadb.PersistentClient(path=vdb_name)
+    collection = client.get_or_create_collection(name=cname)
+
+    return collection    
+
+def chromadb_store_data(vdb, ids, metadatas, documents, embeddings=None):
+    for i in range(len(ids)):
+        vdb.upsert(
+            ids=ids[i],
+            metadatas=metadatas[i],
+            documents=documents[i],
+            embeddings=embeddings[i],
+        )
+    return True
+
+def vectordb_store_page_embeddings(collection, page_embeddings):
+    for page in page_embeddings:
+        collection.upsert(
+            documents=[page["text"]],
+            metadatas=[{"page_number": page["page_number"]}],
+            ids=[f"page-{page['page_number']}"],
+            embeddings=[page["embedding"]]
+        )
+    logging.info(f"Collection '{collection.name}' successfully updated.")
+
+def store_embeddings_in_vectordb(collection, data):
+    logging.debug("Storing page embeddings into ChromaDB")
+
+    ids = [data['level'][e] for e in data['level']]
+    documents = [data['text'][e] for e in data['text']]
+    metadata = [{"key": key, "value": value} for key, value in data['level'].items()]
+    embeddings = [data['embedding'][e] for e in data['embedding']]
+
+    logging.info(f"len ids        :{len(ids)}")
+    logging.info(f"len documents  :{len(documents)}")
+    logging.info(f"len metadata   :{len(metadata)}")
+    logging.info(f"len embeddings :{len(embeddings)}")
+
+    collection.upsert(ids=ids, documents=documents, metadatas=metadata, embeddings=embeddings)
+    logging.info(f"Collection '{collection.name}' successfully updated.")
+    return
+
+def pdf_store_embeddings_in_vectordb(collection, data):
+    logging.debug("Storing page embeddings into ChromaDB")
+
+    ids = [data['file-id']]
+    documents = [data['file-text']]
+    metadata = [{'key': data['file-id'], 'value': data['file-text']}]
+    embeddings = [data['file-embedding']]
+
+    for e in data['pages']:
+        ids.append(f"{e['page-id']}")
+        documents.append(f"{e['page-text']}")
+        metadata.append({'key': f"{e['page-id']}, 'value': {e['page-text']}"})
+        embeddings.append(e['page-embedding'])
+
+    for e in data['chunks']:
+        ids.append(f"{e['chunk-id']}")
+        documents.append(f"{e['chunk-text']}")
+        metadata.append({'key': f"{e['chunk-id']}", 'value': f"{e['chunk-text']}"})
+        embeddings.append(e['chunk-embedding'])
+
+    logging.info(f"len ids        :{len(ids)}")
+    logging.info(f"len documents  :{len(documents)}")
+    logging.info(f"len metadata   :{len(metadata)}")
+    logging.info(f"len embeddings :{len(embeddings)}")
+
+    collection.upsert(ids=ids, documents=documents, metadatas=metadata, embeddings=embeddings)
+    logging.info(f"Collection '{collection.name}' successfully updated.")
+    return
+    
+def vdb_search_by_id(collection, id_value=None):
+    results = collection.get(ids=[id_value], include=["documents", "metadatas", "embeddings"])
+    return results
+
+def vdb_search_by_query(collection, query_text=None, n_results=5):
+    query_embedding = get_text_embedding(query_text)
+    return collection.query(query_embeddings=[query_embedding], n_results=n_results)
+
+def vdb_search_by_query_ids(collection, query_text=None, n_results=5, only_chunks=False):
+    query_embedding = get_text_embedding(query_text)
+    retval = collection.query(query_embeddings=[query_embedding])
+    
+    chunk_index = []
+    ids = [[]]
+    documents = [[]]
+    distances = [[]]
+    
+    for i, id in enumerate(retval['ids'][0]):
+        if 'chunk'.lower() in id.lower():
+            chunk_index.append(i)
+            ids[0].append(retval['ids'][0][i])
+            documents[0].append(retval['documents'][0][i])
+            distances[0].append(retval['distances'][0][i])
+        
+        if (i == n_results-1):
+            break
+    
+    return {'ids': ids, 'documents': documents, 'distances': distances}
+
+==================================================
+
+# File: 22-CSV-Emb-to-Vectordb.py
+import pandas as pd
+import chromadb
+import logging
+from chromadb_utils import get_or_create_vector_db
+from chromadb_utils import pdf_store_embeddings_in_vectordb
+
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+
+def load_embeddings_from_csv(csv_embeddings):
+    dataframe  = pd.read_csv(csv_embeddings)
+    return dataframe
+
+def main():
+    print("NOT IMPLIMENTED...ITS A BUGGY CODE")
+    exit(1)
+    csv_embeddings_path = 'embeddings/cholas.csv'
+    vdb_name = "vectDB/pdf-vectorDB"
+    coll_name = "pdf-page-embeddings"
+ 
+    text_df = load_embeddings_from_csv(csv_embeddings_path)
+    print(text_df.head()) 
+    print(text_df.columns)
+    
+    data = text_df.to_dict()
+    collection = get_or_create_vector_db(vdb_name, coll_name)
+    pdf_store_embeddings_in_vectordb(collection, data)
+    return True
+  
+if __name__ == "__main__":
+    main()
+
+==================================================
+
+# File: 11-Load-Emb-From-csv.py
+import pandas as pd
+    
+def load_embeddings_from_csv(csv_embeddings):
+    dataframe  = pd.read_csv(csv_embeddings)
+    return dataframe
+
+def main():
+    csv_embeddings = 'embeddings/cholas.csv'
+ 
+    text_df = load_embeddings_from_csv(csv_embeddings)
+
+    print(text_df.head()) 
+    print(text_df.columns)
+    print(text_df.columns)
+
+    return True
+  
+if __name__ == "__main__":
+    main()
+
+==================================================
+
+# File: pdf-operations.py
+import fitz
+
+def create_pdf_with_fitz(output_path, content):
+    # Create a new PDF document
+    pdf_document = fitz.open()
+
+    # Add a page to the document
+    page = pdf_document.new_page()
+
+    # Define text settings
+    font_size = 12
+    x, y = 50, 50  # Starting coordinates for text
+    line_height = font_size + 2
+
+    # Split the content into lines and add to the page
+    for line in content.split("\n"):
+        line = line.strip()
+        page.insert_text((x, y), line, fontsize=font_size)
+        y += line_height  # Move to the next line
+
+    # Save the document to the specified path
+    pdf_document.save(output_path)
+    pdf_document.close()
+
+    print(f"PDF created successfully at: {output_path}")
+
+# 1. Open and Close Document
+def open_pdf(file_path):
+    pdf = fitz.open(file_path)
+    print(f"Opened PDF with {len(pdf)} pages.")
+    pdf.close()
+
+# 2. Access Pages
+def get_page(file_path, page_number):
+    pdf = fitz.open(file_path)
+    page = pdf[page_number]
+    print(page)
+    pdf.close()
+
+# 3. Extract Text
+def extract_text(file_path):
+    pdf = fitz.open(file_path)
+    for page_number in range(len(pdf)):
+        page = pdf[page_number]
+        print(f"Page {page_number + 1}:\n{page.get_text()}")
+    pdf.close()
+
+# 4. Get Metadata
+def get_metadata(file_path):
+    pdf = fitz.open(file_path)
+    metadata = pdf.metadata
+    print("Metadata:")
+    for key, value in metadata.items():
+        print(f"{key}: {value}")
+    pdf.close()
+
+# 5. Get Number of Pages
+def get_page_count(file_path):
+    pdf = fitz.open(file_path)
+    print(f"Number of pages: {len(pdf)}")
+    pdf.close()
+
+# 6. Search for Text
+def search_text(file_path, keyword):
+    pdf = fitz.open(file_path)
+    page = pdf[0]
+    results = page.search_for(keyword)
+    print(f"Found {len(results)} occurrences of '{keyword}' on the first page.")
+    pdf.close()
+
+# 7. Extract Images
+def extract_images(file_path):
+    pdf = fitz.open(file_path)
+    page = pdf[0]
+    images = page.get_images()
+    print(f"Found {len(images)} images on the first page.")
+    pdf.close()
+
+# 8. Render Page as Image
+def render_page_as_image(file_path, page_number, output_path):
+    pdf = fitz.open(file_path)
+    pixmap = pdf[page_number].get_pixmap()
+    pixmap.save(output_path)
+    print(f"Page {page_number + 1} saved as an image: {output_path}")
+    pdf.close()
+
+# 9. Annotate Pages
+def highlight_text(file_path, keyword, output_path):
+    pdf = fitz.open(file_path)
+    page = pdf[0]
+    highlights = page.search_for(keyword)
+    for rect in highlights:
+        page.add_highlight_annot(rect)
+    pdf.save(output_path)
+    print(f"Saved highlighted PDF to {output_path}")
+    pdf.close()
+
+# 10. Insert Pages
+def insert_page(file_path, text, output_path):
+    pdf = fitz.open(file_path)
+    pdf.insert_page(0, text=text)
+    pdf.save(output_path)
+    print(f"Inserted a new page with text and saved to {output_path}")
+    pdf.close()
+
+# 11. Merge PDFs
+def merge_pdfs(pdf1_path, pdf2_path, output_path):
+    pdf1 = fitz.open(pdf1_path)
+    pdf2 = fitz.open(pdf2_path)
+    pdf1.insert_pdf(pdf2)
+    pdf1.save(output_path)
+    print(f"Merged PDFs and saved to {output_path}")
+    pdf1.close()
+    pdf2.close()
+
+# 12. Save PDF
+def save_pdf_with_compression(file_path, output_path):
+    pdf = fitz.open(file_path)
+    pdf.save(output_path, deflate=True)
+    print(f"Saved compressed PDF to {output_path}")
+    pdf.close()
+
+# 13. Delete Pages
+def delete_page(file_path, page_number, output_path):
+    pdf = fitz.open(file_path)
+    pdf.delete_page(page_number)
+    pdf.save(output_path)
+    print(f"Deleted page {page_number + 1} and saved to {output_path}")
+    pdf.close()
+
+# 14. Extract Table of Contents
+def extract_toc(file_path):
+    pdf = fitz.open(file_path)
+    toc = pdf.get_toc()
+    print("Table of Contents:")
+    for entry in toc:
+        print(entry)
+    pdf.close()
+
+# 15. Extract Links
+def extract_links(file_path):
+    pdf = fitz.open(file_path)
+    page = pdf[0]
+    links = page.get_links()
+    print("Links on the first page:")
+    for link in links:
+        print(link)
+    pdf.close()
+
+# Main function to demonstrate usage
+def main():
+    file_path = "bits.pdf"
+    keyword = "swap"
+    output_image_path = "page1.png"
+    output_pdf_path = "output.pdf"
+
+    output_file = "ramayan.pdf"
+    text_content = """Ramayan is an ancient Indian epic.
+    It narrates the journey of Lord Rama.
+    The story includes Sita, Lakshman, Hanuman.
+    Written by sage Valmiki in Sanskrit.
+    """
+    create_pdf_with_fitz(output_file, text_content)
+    return
+
+    # Call any of the defined functions
+    # Example calls:
+    open_pdf(file_path)
+    get_page_count(file_path)
+    extract_text(file_path)
+    get_metadata(file_path)
+    search_text(file_path, keyword)
+    extract_images(file_path)
+    render_page_as_image(file_path, 0, output_image_path)
+    highlight_text(file_path, keyword, output_pdf_path)
+    insert_page(file_path, "This is a new page", output_pdf_path)
+    merge_pdfs("bits.pdf", "output.pdf", "merged.pdf")
+    save_pdf_with_compression(file_path, "compressed.pdf")
+    delete_page(file_path, 0, output_pdf_path)
+    extract_toc(file_path)
+    extract_links(file_path)
+
+
+if __name__ == "__main__":
+    main()
+    
+
+==================================================
